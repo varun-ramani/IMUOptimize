@@ -1,7 +1,7 @@
 """
 Computes a synthesized version of the provided dataset in a massively parallel way.
 """
-from data.load.raw_amass import RawAMASSDataset
+from data.load import RawAMASSDataset
 from torch.utils.data import DataLoader
 from pathlib import Path
 import shutil
@@ -10,21 +10,29 @@ import articulate
 from rich import print
 from rich.progress import track
 import torch
-from .pipeline import generate_synthesized_sample
+from .pipeline import transform_poses_trans, run_kinematics, synthesize_imu_data
 from multiprocessing.pool import ThreadPool
+from rich.progress import Progress
 
 def sample_map_target(payload):
     """
     When we're mapping over the dataset using our cores, we'll leverage this.
     """
-    samp_id, sample, model, requested_joints, keep_subdirectories, input_root, output_root, smooth_n = payload
+    samp_id, sample, model, requested_joints, keep_subdirectories, input_root, output_root, smooth_n, progress = payload
     seq_path, seq_data = sample
+
     seq_path = seq_path[0] # because for some reason, it's a tuple here
-    (poses, trans, betas, 
-        joint, imu_acc, imu_rot) = generate_synthesized_sample(
-        model, seq_data, requested_joints, smooth_n
-    )
-    seq_path_obj = Path(seq_path)
+
+    task = progress.add_task(f"Transforming {seq_path}", total=4)
+
+    poses, trans, betas = seq_data
+    poses, trans = transform_poses_trans(poses, trans)
+    progress.update(task, advance=1)
+    grot, joint, vert = run_kinematics(model, poses, trans, betas)
+    progress.update(task, advance=1)
+    imu_acc, imu_rot = synthesize_imu_data(model, vert, grot, requested_joints, smooth_n)
+    progress.update(task, advance=1)
+
     parent_directory = Path(str(seq_path).replace(str(input_root), '')).parts[1]
     if keep_subdirectories:
         output_dir = Path(output_root) / parent_directory
@@ -44,7 +52,9 @@ def sample_map_target(payload):
     torch.save(imu_acc, seq_out_path / 'accelerations.pt')
     torch.save(imu_rot, seq_out_path / 'rotations.pt')
 
-    return seq_out_path
+    progress.update(task, visible=False)
+
+    return seq_path
 
 def produce_synthetic_dataset(input_ds, output_ds, smpl_model_path, desired_joints=None, keep_subdirectories=True, purge_existing=False):
     """
@@ -74,7 +84,12 @@ def produce_synthetic_dataset(input_ds, output_ds, smpl_model_path, desired_join
 
     smpl_model = articulate.ParametricModel(smpl_model_path)
 
-    with ThreadPool(8) as pool:
-        tasks = ((i, sample, smpl_model, desired_joints, keep_subdirectories, input_ds, output_ds, 4) for i, sample in enumerate(input_data_loader))
-        for seq in track(pool.imap_unordered(sample_map_target, tasks), total=len(input_data_loader), description="Synthesizing dataset..."):
-            print(seq)
+    with ThreadPool(8) as pool, Progress(console=utils.console) as progress:
+        tasks = ((i, sample, smpl_model, desired_joints, keep_subdirectories, input_ds, output_ds, 4, progress) for i, sample in enumerate(input_data_loader))
+        root_task = progress.add_task("Running all transformations", total=len(input_data_loader))
+
+        for sid, seq in enumerate(pool.imap_unordered(sample_map_target, tasks)):
+            utils.log_info(f"{sid} / {len(input_data_loader)}: '{seq}'")
+            progress.update(root_task, advance=1)
+
+    utils.log_info("Done with all transformations.")

@@ -1,7 +1,3 @@
-from enum import Enum
-from data.load.raw_amass import RawAMASSDataset
-from torch.utils.data import DataLoader
-from multiprocessing import Pool
 import os
 import requests
 from dotenv import load_dotenv
@@ -17,6 +13,11 @@ def log_error(message, webhook=True):
 
 def log_info(message, webhook=True):
     console.log(message, style='blue')
+    if webhook:
+        log_to_webhook(message)
+
+def log_warning(message, webhook=True):
+    console.log(message, style='yellow')
     if webhook:
         log_to_webhook(message)
 
