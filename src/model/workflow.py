@@ -10,9 +10,7 @@ from rich.progress import track
 from torch.utils.data import DataLoader
 from rich.progress import Progress
 
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-utils.log_info(f"Using torch device '{device}'")
-device = torch.device(device)
+device = utils.torch_device
 
 def find_latest_checkpoint(checkpoints_dir: str):
     """

@@ -2,9 +2,12 @@ import os
 import requests
 from dotenv import load_dotenv
 from rich.console import Console
+import torch
 
 load_dotenv()
 console = Console()
+
+
 
 def log_error(message, webhook=True):
     console.log(message, style='red')
@@ -28,3 +31,7 @@ def log_to_webhook(message):
     requests.post(webhook, {
         'content': message
     })
+
+torch_device = 'cuda' if torch.cuda.is_available() else 'cpu'
+log_info(f"Using torch device '{torch_device}'")
+torch_device = torch.device(torch_device)
