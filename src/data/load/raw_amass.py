@@ -3,6 +3,7 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 from pathlib import Path
 import utils
+from rich.progress import track
 
 def read_amass_npz(npz_path):
     try:
@@ -11,6 +12,7 @@ def read_amass_npz(npz_path):
         return None
     
     if 'mocap_framerate' not in cdata:
+        utils.log_warning(f"'{npz_path}' does not contain mocap_framerate")
         return None
 
     framerate = int(cdata['mocap_framerate'])
@@ -38,7 +40,18 @@ def read_amass_npz(npz_path):
 class RawAMASSDataset(Dataset):
     def __init__(self, amass_directory):
         self.amass_directory = amass_directory
-        self.npz_files = list(Path(self.amass_directory).glob('**/*.npz'))
+
+        base_npzs = list(Path(self.amass_directory).glob("**/*.npz"))
+
+        self.npz_files = [
+            element 
+            for element in track(
+                base_npzs,
+                console = utils.console,
+                description = "Filtering bad elements from dataset"
+            ) 
+            if read_amass_npz(element) is not None
+        ]
 
     def __len__(self):
         return len(self.npz_files)
@@ -49,9 +62,6 @@ class RawAMASSDataset(Dataset):
 
         npz_path = self.npz_files[idx]
         data = read_amass_npz(npz_path)
-        if data is None:
-            utils.log_warning(f"something went wrong while reading '{npz_path}'")
-            del self.npz_files[idx]
-            return self[idx]
         poses, trans, betas = data
+
         return str(npz_path), (poses, trans, betas)
