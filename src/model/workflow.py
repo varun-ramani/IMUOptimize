@@ -117,6 +117,7 @@ def train_model(
 
     # we need to ensure that the network has been put into training mode
     net.train()
+    net.to(device)
 
     with Progress(console=utils.console) as progress:
         training_task = progress.add_task("Training model...", total=epochs)
@@ -142,3 +143,5 @@ def train_model(
 
             progress.update(epoch_task, visible=False)
             progress.update(training_task, advance=1)
+
+        save_train_context(output, net, optimizer, loss)
