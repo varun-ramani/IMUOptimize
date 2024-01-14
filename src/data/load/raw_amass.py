@@ -27,6 +27,7 @@ def read_amass_npz(npz_path):
 
     data_length = poses.shape[0]   
     if data_length <= 12:
+        utils.log_warning(f"'{npz_path}' contains less than 12 frames.")
         return None
 
     betas = torch.tensor(cdata['betas'][:10].astype(np.float32))
