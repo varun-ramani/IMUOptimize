@@ -5,6 +5,7 @@ python -m analysis \
           --model birnn \
           --stage full \
           --smpl-model ../artifacts/smpl/SMPL_male.pkl \
-          --subset 3 \
+          --subset 100 \
+          --num-sensors 24 \
           --output ../artifacts/analysis/full/birnn \
-          --no-eval
+          --recurse
