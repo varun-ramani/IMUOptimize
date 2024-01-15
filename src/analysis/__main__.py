@@ -44,6 +44,7 @@ class Args:
     num_sensors: int
     no_eval: bool
     no_analyze: bool
+    recurse: bool
 
 args = Args(
     input_ds=acquire_argument('--data'),
@@ -56,6 +57,7 @@ args = Args(
     num_sensors=int(acquire_argument('--num-sensors', default=24)),
     no_analyze=acquire_argument('--no-analyze', is_boolean=True),
     no_eval=acquire_argument('--no-eval', is_boolean=True),
+    recurse=acquire_argument('--recurse', is_boolean=True)
 )
 
 net: nn.Module = None
@@ -89,36 +91,49 @@ if find_latest_checkpoint(args.checkpoints_dir) is None:
 
 load_train_context(args.checkpoints_dir, net, optimizer)
 
+
+
+def run_analysis(input_ds, output_path):
+    if not output_path.exists():
+        output_path.mkdir(parents=True)
+
+    utils.log_info(f"Analysis for {input_ds}")
+
+    if not args.no_eval:
+        utils.log_info("Now running basic model evaluation")
+
+        crit_score, mpje_score = evaluate_mean_per_joint_error(net, criterion, args.smpl_model, input_ds, subset_size=args.subset_size)
+        pos_err, loc_rot_err, global_rot_err = mpje_score
+
+        data = {
+            'crit_type': str(criterion),
+            'crit_score': crit_score.detach().item(),
+            'pos_err': pos_err.detach().item(),
+            'loc_rot_err': loc_rot_err.detach().item(),
+            'global_rot_err': global_rot_err.detach().item()
+        }
+
+        outfile = output_path / 'evaluation.json'
+        with open(outfile, 'w') as fp:
+            json.dump(data, fp, indent=4)
+            utils.log_info(f"Wrote evaluation to {outfile}")
+
+
+    if not args.no_analyze:
+        utils.log_info("Now running feature ablation to find most important IMUs")
+        result = run_ablation(net, input_ds, args.subset_size, args.num_sensors)
+        df = pd.DataFrame(result)
+        outfile = output_path / 'feature_analysis.csv'
+        df.to_csv(outfile, index=None)
+        utils.log_info(f"Wrote feature analysis to {outfile}")
+
 outputs_dir = Path(args.output_dir)
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 output_path = outputs_dir / f'analysis_{timestamp}'
-output_path.mkdir(parents=True)
 
-if not args.no_eval:
-    utils.log_info("Now running basic model evaluation")
-
-    crit_score, mpje_score = evaluate_mean_per_joint_error(net, criterion, args.smpl_model, args.input_ds, subset_size=args.subset_size)
-    pos_err, loc_rot_err, global_rot_err = mpje_score
-
-    data = {
-        'crit_type': str(criterion),
-        'crit_score': crit_score.detach().item(),
-        'pos_err': pos_err.detach().item(),
-        'loc_rot_err': loc_rot_err.detach().item(),
-        'global_rot_err': global_rot_err.detach().item()
-    }
-
-    outfile = output_path / 'evaluation.json'
-    with open(outfile, 'w') as fp:
-        json.dump(data, fp, indent=4)
-        utils.log_info(f"Wrote evaluation to {outfile}")
-
-
-if not args.no_analyze:
-    utils.log_info("Now running feature ablation to find most important IMUs")
-    result = run_ablation(net, args.input_ds, args.subset_size, args.num_sensors)
-    df = pd.DataFrame(result)
-    outfile = output_path / 'feature_analysis.csv'
-    df.to_csv(outfile, index=None)
-    utils.log_info(f"Wrote feature analysis to {outfile}")
-    
+input_path = Path(args.input_ds)
+if run_analysis:
+    for subdirectory in input_path.glob('*/'):
+        local_output_path = output_path / subdirectory.name
+        run_analysis(subdirectory, local_output_path)
+run_analysis(input_path, output_path)

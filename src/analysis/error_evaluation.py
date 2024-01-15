@@ -41,7 +41,6 @@ def evaluate_mean_per_joint_error(
         console=utils.console, 
         description="Running inference", 
         total=subset_size,
-        transient=True
     ):
         x, y = x.to(torch_device), y.to(torch_device)
         Y_vals.append(y)

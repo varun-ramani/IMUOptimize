@@ -71,28 +71,27 @@ def run_ablation(net, eval_ds, subset_size=50, num_sensors=24):
 
     all_attr = []
 
-    with torch.no_grad():
-        for index, (x, y) in track(
-            zip(range(subset_size), loader), 
-            console=utils.console,
-            description="Running feature ablation",
-            total=subset_size
-        ):
-            x, y = x.to(torch_device), y.to(torch_device)
-            feature_mask = gen_feature_mask(x.shape[0], num_sensors)
-            fa = FeatureAblation(net)
-            try:
-                res = fa.attribute(
-                    x,
-                    target=0,
-                    feature_mask=feature_mask,
-                    return_convergence_delta=True,
-                    perturbations_per_eval=1
-                )
-                mean_attr = torch.mean(res, dim=0)
-                group_means = calculate_group_means(feature_mask, mean_attr)
-                all_attr.append(group_means.detach())
-            except Exception as e:
-                utils.log_warning(f"Error (probably OOM) on sample of shape {x.shape}")
+    for index, (x, y) in track(
+        zip(range(subset_size), loader), 
+        console=utils.console,
+        description="Running feature ablation",
+        total=subset_size
+    ):
+        x, y = x.to(torch_device), y.to(torch_device)
+        x.requires_grad_()
+        feature_mask = gen_feature_mask(x.shape[0], num_sensors)
+        fa = FeatureAblation(net)
+        try:
+            res = fa.attribute(
+                x,
+                target=0,
+                feature_mask=feature_mask,
+                return_convergence_delta=True
+            )
+            mean_attr = torch.mean(res, dim=0)
+            group_means = calculate_group_means(feature_mask, mean_attr)
+            all_attr.append(group_means.detach())
+        except Exception as e:
+            utils.log_warning(f"Error (probably OOM) on sample of shape {x.shape}")
 
     return torch.stack(all_attr, dim=0)
