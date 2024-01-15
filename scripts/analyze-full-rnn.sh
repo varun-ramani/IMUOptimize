@@ -5,5 +5,6 @@ python -m analysis \
           --model birnn \
           --stage full \
           --smpl-model ../artifacts/smpl/SMPL_male.pkl \
-          --subset 20 \
-          --output ../artifacts/analysis/full/birnn
+          --subset 3 \
+          --output ../artifacts/analysis/full/birnn \
+          --no-eval

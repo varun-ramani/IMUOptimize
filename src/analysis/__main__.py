@@ -8,7 +8,12 @@ from torch.optim import SGD, Optimizer
 from model.full_ds.birnn import StepOneRNN
 from model.workflow import load_train_context, find_latest_checkpoint
 from .error_evaluation import evaluate_mean_per_joint_error
+from .feature_ablation import run_ablation
 from rich.table import Table
+import pandas as pd
+from pathlib import Path
+from datetime import datetime
+import json
 
 # start by parsing the arguments
 def acquire_argument(arg_name, is_boolean=False, default=None):
@@ -36,6 +41,9 @@ class Args:
     model: str
     stage: str
     subset_size: int
+    num_sensors: int
+    no_eval: bool
+    no_analyze: bool
 
 args = Args(
     input_ds=acquire_argument('--data'),
@@ -44,7 +52,10 @@ args = Args(
     model=acquire_argument('--model'), # should be transformer or birnn
     smpl_model=acquire_argument('--smpl-model'), # don't get this confused with the --model
     stage=acquire_argument('--stage'), # should be full or optim
-    subset_size=int(acquire_argument('--subset', default=50))
+    subset_size=int(acquire_argument('--subset', default=50)),
+    num_sensors=int(acquire_argument('--num-sensors', default=24)),
+    no_analyze=acquire_argument('--no-analyze', is_boolean=True),
+    no_eval=acquire_argument('--no-eval', is_boolean=True),
 )
 
 net: nn.Module = None
@@ -78,17 +89,36 @@ if find_latest_checkpoint(args.checkpoints_dir) is None:
 
 load_train_context(args.checkpoints_dir, net, optimizer)
 
-crit_score, mpje_score = evaluate_mean_per_joint_error(net, criterion, args.smpl_model, args.input_ds, subset_size=args.subset_size)
-pos_err, loc_rot_err, global_rot_err = mpje_score
+outputs_dir = Path(args.output_dir)
+timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+output_path = outputs_dir / f'analysis_{timestamp}'
+output_path.mkdir(parents=True)
 
-results_table = Table(title=f"{net.__class__.__name__} Evaluation")
+if not args.no_eval:
+    utils.log_info("Now running basic model evaluation")
 
-results_table.add_column("Metric")
-results_table.add_column("Score")
+    crit_score, mpje_score = evaluate_mean_per_joint_error(net, criterion, args.smpl_model, args.input_ds, subset_size=args.subset_size)
+    pos_err, loc_rot_err, global_rot_err = mpje_score
 
-results_table.add_row(str(criterion), str(crit_score.detach().numpy()))
-results_table.add_row("Positional Error", str(pos_err.detach().numpy()))
-results_table.add_row("Local Rotation Error", str(loc_rot_err.detach().numpy()))
-results_table.add_row("Global Rotation Error", str(global_rot_err.detach().numpy()))
+    data = {
+        'crit_type': str(criterion),
+        'crit_score': crit_score.detach().item(),
+        'pos_err': pos_err.detach().item(),
+        'loc_rot_err': loc_rot_err.detach().item(),
+        'global_rot_err': global_rot_err.detach().item()
+    }
 
-utils.console.print(results_table)
+    outfile = output_path / 'evaluation.json'
+    with open(outfile, 'w') as fp:
+        json.dump(data, fp, indent=4)
+        utils.log_info(f"Wrote evaluation to {outfile}")
+
+
+if not args.no_analyze:
+    utils.log_info("Now running feature ablation to find most important IMUs")
+    result = run_ablation(net, args.input_ds, args.subset_size, args.num_sensors)
+    df = pd.DataFrame(result)
+    outfile = output_path / 'feature_analysis.csv'
+    df.to_csv(outfile, index=None)
+    utils.log_info(f"Wrote feature analysis to {outfile}")
+    
