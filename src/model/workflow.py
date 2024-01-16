@@ -9,6 +9,7 @@ from data.load import AMASSDataset
 from rich.progress import track
 from torch.utils.data import DataLoader
 from rich.progress import Progress
+from torch import nn
 
 device = utils.torch_device
 
@@ -93,7 +94,8 @@ def train_model(
     epochs: int, 
     dataset_dir: str, 
     checkpoints_dir: str, 
-    scratch=False
+    scratch=False,
+    num_sensors=24
 ):
     """
     Supplied with an empty network, optimizer and criterion, will optionally
@@ -110,11 +112,11 @@ def train_model(
     if not scratch:
         load_train_context(checkpoints_dir, net, optimizer)
     
-    ds = AMASSDataset(dataset_dir)
+    ds = AMASSDataset(dataset_dir, num_sensors=num_sensors)
     output = Path(checkpoints_dir)
 
     # Leverage all the GPUs
-    # net = torch.nn.DataParallel(net)
+    net = nn.DataParallel(net)
 
     # we need to ensure that the network has been put into training mode
     net.train()

@@ -6,6 +6,7 @@ from typing import List
 from torch import nn
 from torch.optim import SGD, Optimizer
 from model.full_ds.birnn import StepOneRNN
+from model.optim_ds.birnn import StepTwoRNN
 from model.workflow import train_model
 
 # start by parsing the arguments
@@ -31,6 +32,7 @@ class Args:
     stage: str
     epochs: int
     scratch: bool
+    num_sensors: int
 
 args = Args(
     input_ds=acquire_argument('--data'),
@@ -38,7 +40,8 @@ args = Args(
     model=acquire_argument('--model'), # should be transformer or birnn
     stage=acquire_argument('--stage'), # should be full or optim
     epochs=int(acquire_argument('--epochs')),
-    scratch=acquire_argument('--scratch', is_boolean=True)
+    scratch=acquire_argument('--scratch', is_boolean=True),
+    num_sensors=int(acquire_argument('--num-sensors')),
 )
 
 net: nn.Module = None
@@ -56,7 +59,7 @@ elif args.model == 'birnn':
     if args.stage == 'full':
         net = StepOneRNN(num_hidden=1024)
     elif args.stage == 'optim': 
-        pass
+        net = StepTwoRNN(num_hidden=1024)
     else:
         utils.log_error(f"Invalid stage {args.stage}")
         exit(-1)
@@ -66,7 +69,6 @@ else:
     utils.log_error(f"Invalid model type {args.model}")
     exit(-1)
 
-
 train_model(
     net, 
     optimizer,
@@ -74,5 +76,6 @@ train_model(
     args.epochs,
     args.input_ds,
     args.checkpoints_dir,
-    args.scratch
+    args.scratch,
+    args.num_sensors
 )
