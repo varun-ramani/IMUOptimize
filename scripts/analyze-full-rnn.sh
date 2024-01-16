@@ -1,11 +1,14 @@
+#!/bin/zsh
+
+source .env
 cd src
 python -m analysis \
-          --data ../artifacts/data/AMASS_t_all \
-          --checkpoints ../artifacts/checkpoints/full/birnn \
+          --data $ARTIFACTS/data/AMASS_t_all \
+          --checkpoints $ARTIFACTS/checkpoints/full/birnn \
           --model birnn \
           --stage full \
-          --smpl-model ../artifacts/smpl/SMPL_male.pkl \
+          --smpl-model $ARTIFACTS/smpl/SMPL_male.pkl \
           --subset 100 \
           --num-sensors 24 \
-          --output ../artifacts/analysis/full/birnn \
+          --output $ARTIFACTS/analysis/full/birnn \
           --recurse

@@ -1,7 +1,11 @@
+#!/bin/zsh
+
+source .env
 cd src
 python -m model \
-          --data ../artifacts/data/AMASS_t_all \
-          --checkpoints ../artifacts/checkpoints/full/birnn \
+          --data $ARTIFACTS/data/AMASS_t_all \
+          --checkpoints $ARTIFACTS/checkpoints/full/birnn \
           --model birnn \
           --stage full \
-          --epochs 5
+          --epochs 5 \
+          --num-sensors 24
