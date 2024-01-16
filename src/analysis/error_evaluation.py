@@ -42,9 +42,9 @@ def evaluate_mean_per_joint_error(
         description="Running inference", 
         total=subset_size,
     ):
-        x, y = x.to(torch_device), y.to(torch_device)
+        x, y = x.to(torch_device), y
         Y_vals.append(y)
-        Y_preds.append(net(x))
+        Y_preds.append(net(x).cpu().detach())
     
     utils.log_info("Computing criterion score")
     Y = torch.hstack(Y_vals)

@@ -14,6 +14,7 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 import json
+import matplotlib.pyplot as plt
 
 # start by parsing the arguments
 def acquire_argument(arg_name, is_boolean=False, default=None):
@@ -91,6 +92,42 @@ if find_latest_checkpoint(args.checkpoints_dir) is None:
 
 load_train_context(args.checkpoints_dir, net, optimizer)
 
+def importance_plot(input_df, output_path):
+    joint_names = [
+    'Pelvis', 'L Hip', 'R Hip', 'Spine1', 'L Knee', 'R Knee', 'Spine2',
+    'L Ankle', 'R Ankle', 'Spine3', 'L Foot', 'R Foot', 'Neck', 'L Collar',
+    'R Collar', 'Head', 'L Shoulder', 'R Shoulder', 'L Elbow', 'R Elbow',
+    'L Wrist', 'R Wrist', 'L Hand', 'R Hand'
+    ]
+    indices_to_body_parts = dict(enumerate(joint_names))
+    attr_mean = input_df.abs().mean()
+
+    attr_mean = attr_mean.sort_values(ascending=False)
+
+    # Create a DataFrame with 'joint' and 'fa_importance' columns
+    result_df = pd.DataFrame({'joint':attr_mean.index, 'fa_importance': attr_mean.values})
+    result_df['joint_names'] = [indices_to_body_parts[int(i)] for i in result_df.joint]
+    # Save the DataFrame to CSV
+    outfile = output_path / 'joint_importance_sorted_fa.csv'
+    result_df.to_csv(outfile, index=False)
+    utils.log_info(f"Saved sorted feature analysis of joints to {outfile}")
+    # Plot the data
+    plt.figure(figsize=(10, 6))
+    plt.bar(result_df['joint_names'], result_df['fa_importance'])
+    # plt.xlabel('Joint Index')
+    plt.ylabel('Feature Ablation Importance',fontsize = 13)
+    plt.title(f'Feature Ablation Importance Sorted by Joint - Dataset', fontsize = 14)
+    # Set x-axis tick labels using the dictionary
+    # plt.xticks(range(len(y_values)), [indices_to_body_parts[index] for index in range(len(y_values))], rotation=45, ha='right')
+
+    plt.xticks(rotation=45, ha='right', fontsize = 13)  # Rotate x-axis labels for better readability
+    plt.tight_layout()
+
+    # Save the plot as an image
+    outfile = output_path / 'joint_importance_sorted_fa.png'
+    plt.savefig(outfile)
+    utils.log_info(f"Saved plot of sorted feature analysis of joints to {outfile}")
+
 
 
 def run_analysis(input_ds, output_path):
@@ -117,6 +154,28 @@ def run_analysis(input_ds, output_path):
         with open(outfile, 'w') as fp:
             json.dump(data, fp, indent=4)
             utils.log_info(f"Wrote evaluation to {outfile}")
+        # now also write the data to a LaTeX table by converting it to a Pandas DF and using to_latex
+        eval_df = pd.DataFrame(list(data.items()), columns=['Attribute', 'Value'])
+        eval_df['Value'] = eval_df['Value'].apply(lambda x: format(x, '.3f') if isinstance(x, (float, int)) else x)
+        # Get the last directory name (= database name)
+        ds_name = output_path.name
+        caption = f"Evaluation of {args.stage} {args.model} model on {ds_name} dataset"
+        label = f"eval_{args.stage}_{args.model}_{ds_name}"
+        latex_table = eval_df.to_latex(index=False, caption = caption, label = label)
+        outfile = output_path / 'evaluation.tex'
+        with open(outfile, 'w') as f:
+            f.write(latex_table)
+            utils.log_info(f"Wrote evaluation to a LaTeX table {outfile}")
+        # now also write the data to a png table
+        outfile = output_path / 'evaluation.png'
+        fig, ax = plt.subplots(figsize=(6, 3))
+        ax.axis('off')  # Hide axes
+        ax.table(cellText=eval_df.values, colLabels=eval_df.columns, cellLoc='center', loc='center')
+        ax.set_title(caption) 
+        plt.savefig(outfile, bbox_inches='tight', pad_inches=0.1)
+        utils.log_info(f"Saved evaluation to a figure {outfile}")
+
+        
 
 
     if not args.no_analyze:
@@ -126,6 +185,13 @@ def run_analysis(input_ds, output_path):
         outfile = output_path / 'feature_analysis.csv'
         df.to_csv(outfile, index=None)
         utils.log_info(f"Wrote feature analysis to {outfile}")
+        
+        # now produce a boxplot from the data 
+        # produce a bargraph from the data
+        # produce a boxplot that's sorted 
+        # produce a bargraph that's sorted
+        importance_plot(df, output_path)
+        
 
 outputs_dir = Path(args.output_dir)
 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')

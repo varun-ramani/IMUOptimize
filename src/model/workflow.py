@@ -113,6 +113,9 @@ def train_model(
     ds = AMASSDataset(dataset_dir)
     output = Path(checkpoints_dir)
 
+    # Leverage all the GPUs
+    # net = torch.nn.DataParallel(net)
+
     # we need to ensure that the network has been put into training mode
     net.train()
     net.to(device)
