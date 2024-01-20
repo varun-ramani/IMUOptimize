@@ -3,7 +3,8 @@ from torch.utils.data import Dataset, DataLoader
 import numpy as np
 from pathlib import Path
 import utils
-from rich.progress import track
+from rich.progress import track, Progress
+from multiprocessing.pool import ThreadPool
 
 def read_amass_npz(npz_path):
     try:
@@ -42,16 +43,15 @@ class RawAMASSDataset(Dataset):
         self.amass_directory = amass_directory
 
         base_npzs = list(Path(self.amass_directory).glob("**/*.npz"))
+        self.npz_files = []
 
-        self.npz_files = [
-            element 
-            for element in track(
-                base_npzs,
-                console = utils.console,
-                description = "Filtering bad elements from dataset"
-            ) 
-            if read_amass_npz(element) is not None
-        ]
+        with ThreadPool(8) as pool, Progress(console=utils.console) as progress:
+            root_task = progress.add_task("Filtering bad elements from dataset", total=len(base_npzs))
+
+            for npz, res in pool.imap_unordered(lambda x: (x, read_amass_npz(x)), base_npzs):
+                progress.update(root_task, advance=1)
+                if res is not None:
+                    self.npz_files.append(npz)
 
     def __len__(self):
         return len(self.npz_files)

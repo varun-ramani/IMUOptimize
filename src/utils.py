@@ -7,8 +7,6 @@ import torch
 load_dotenv()
 console = Console()
 
-
-
 def log_error(message, webhook=True):
     console.log(message, style='red')
     if webhook:

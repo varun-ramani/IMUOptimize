@@ -3,7 +3,9 @@ Implements the complete synthesis pipeline by tying together methods from all th
 """
 import torch
 import articulate as art
+import utils
 
+torch_device = utils.torch_device
 
 def transform_poses_trans(poses, trans):
     """
@@ -19,7 +21,7 @@ def transform_poses_trans(poses, trans):
 
     # align AMASS global frame with that of with DIP. Essentially, this means
     # that we're going to rotate the pelvis of all the AMASS data.
-    amass_rot = torch.tensor([[[1, 0, 0], [0, 0, 1], [0, -1, 0.]]])
+    amass_rot = torch.tensor([[[1, 0, 0], [0, 0, 1], [0, -1, 0.]]]).to(torch_device)
     trans = amass_rot.matmul(trans.unsqueeze(-1)).view_as(trans)
     poses[:, 0] = art.math.rotation_matrix_to_axis_angle(
         amass_rot.matmul(

@@ -14,6 +14,8 @@ from .pipeline import transform_poses_trans, run_kinematics, synthesize_imu_data
 from multiprocessing.pool import ThreadPool
 from rich.progress import Progress
 
+torch_device = utils.torch_device
+
 def sample_map_target(payload):
     """
     When we're mapping over the dataset using our cores, we'll leverage this.
@@ -26,12 +28,27 @@ def sample_map_target(payload):
     task = progress.add_task(f"Transforming {seq_path}", total=4)
 
     poses, trans, betas = seq_data
+
+    poses = poses.to(torch_device)
+    trans = trans.to(torch_device)
+    betas = betas.to(torch_device)
+
     poses, trans = transform_poses_trans(poses, trans)
     progress.update(task, advance=1)
     grot, joint, vert = run_kinematics(model, poses, trans, betas)
     progress.update(task, advance=1)
     imu_acc, imu_rot = synthesize_imu_data(model, vert, grot, requested_joints, smooth_n)
     progress.update(task, advance=1)
+
+    # sanity check - can we transform everything?
+    try:
+        poses.view(-1, 24 * 3 * 3).shape
+        imu_acc.view(-1, len(requested_joints) * 3).shape
+        imu_rot.view(-1, len(requested_joints) * 3 * 3).shape
+    except Exception as e:
+        utils.log_error("Tried running transformation, but the result had the wrong shape. Below is the error:")
+        utils.log_error(e)
+        exit(-1)
 
     parent_directory = Path(str(seq_path).replace(str(input_root), '')).parts[1]
     if keep_subdirectories:
@@ -67,7 +84,7 @@ def produce_synthetic_dataset(input_ds, output_ds, smpl_model_path, desired_join
     """
     input_data = RawAMASSDataset(input_ds)
     # input_data = Subset(input_data, range(10))
-    input_data_loader = DataLoader(input_data, shuffle=True)
+    input_data_loader = DataLoader(input_data, shuffle=True, pin_memory=True)
 
     # establish a fresh copy of the output directory 
     output_folder = Path(output_ds)
@@ -76,15 +93,20 @@ def produce_synthetic_dataset(input_ds, output_ds, smpl_model_path, desired_join
             utils.log_error(f"output {output_ds} already exists and purge_existing was not specified.")
             return -1
         else:
-            shutil.rmtree(output_folder)
             utils.log_info(f"Purging directory {output_ds} so it can be recreated.")
+            shutil.rmtree(output_folder)
     
     utils.log_info(f"Created {output_ds}")
     output_folder.mkdir()
 
-    smpl_model = articulate.ParametricModel(smpl_model_path)
+    smpl_model = articulate.ParametricModel(smpl_model_path, device=torch_device)
 
-    with ThreadPool(8) as pool, Progress(console=utils.console) as progress:
+    if torch_device == torch.device('cpu'):
+        num_threads = 8
+    else:
+        num_threads = 1
+
+    with ThreadPool(num_threads) as pool, Progress(console=utils.console) as progress:
         tasks = ((i, sample, smpl_model, desired_joints, keep_subdirectories, input_ds, output_ds, 4, progress) for i, sample in enumerate(input_data_loader))
         root_task = progress.add_task("Running all transformations", total=len(input_data_loader))
 
