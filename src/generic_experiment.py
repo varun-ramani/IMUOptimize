@@ -10,7 +10,7 @@ optim/birnn: train/evaluate a biRNN on minimized IMU dataset.
 
 from torch import nn
 from torch.optim import Optimizer, AdamW, SGD
-from model import StepOneTransformer, StepOneRNN, StepTwoRNN
+from model import StepOneTransformer, StepOneRNN, StepTwoRNN, StepTwoTransformer
 import utils
 
 def net_optim_crit(args):
@@ -21,7 +21,7 @@ def net_optim_crit(args):
         if args.stage == 'full':
             net = StepOneTransformer()
         elif args.stage == 'optim': 
-            net = StepOneTransformer()
+            net = StepTwoTransformer()
         else:
             utils.log_error(f"Invalid stage {args.stage}")
             exit(-1)

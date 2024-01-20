@@ -122,7 +122,7 @@ def train_model(
     with Progress(console=utils.console) as progress:
         training_task = progress.add_task("Training model...", total=epochs)
         for epoch in range(epochs):
-            loader = DataLoader(ds, batch_size=1, pin_memory=True, shuffle=True)
+            loader = DataLoader(ds, batch_size=1, shuffle=True)
             epoch_task = progress.add_task(f"Epoch {epoch} / {epochs}", total=len(loader))
             for index, (x, y) in enumerate(loader):
                 progress.update(epoch_task, advance=1)
