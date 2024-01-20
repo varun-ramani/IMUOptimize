@@ -39,19 +39,27 @@ def read_amass_npz(npz_path):
 
 
 class RawAMASSDataset(Dataset):
-    def __init__(self, amass_directory):
+    def __init__(self, amass_directory, max_seq=500):
         self.amass_directory = amass_directory
 
         base_npzs = list(Path(self.amass_directory).glob("**/*.npz"))
         self.npz_files = []
+        self.max_seq = max_seq
 
         with ThreadPool(8) as pool, Progress(console=utils.console) as progress:
-            root_task = progress.add_task("Filtering bad elements from dataset", total=len(base_npzs))
+            root_task = progress.add_task("Filtering and segmenting dataset", total=len(base_npzs))
 
             for npz, res in pool.imap_unordered(lambda x: (x, read_amass_npz(x)), base_npzs):
                 progress.update(root_task, advance=1)
+
                 if res is not None:
-                    self.npz_files.append(npz)
+                    poses, trans, betas = res
+                    # we want to cap the maximum sequence length that can be
+                    # returned to 500. this is arbitrary, but should make predicting
+                    # time taken by processes more consistent and avoid CUDA OOM issues.
+                    for start_index in range(0, len(poses), max_seq):
+                        if len(poses) - start_index >= 12: 
+                            self.npz_files.append((start_index, npz))
 
     def __len__(self):
         return len(self.npz_files)
@@ -60,8 +68,11 @@ class RawAMASSDataset(Dataset):
         if idx >= len(self):
             raise StopIteration
 
-        npz_path = self.npz_files[idx]
+        (start_index, npz_path) = self.npz_files[idx]
         data = read_amass_npz(npz_path)
         poses, trans, betas = data
 
-        return str(npz_path), (poses, trans, betas)
+        poses = poses[start_index:(start_index + self.max_seq)]
+        trans = trans[start_index:(start_index + self.max_seq)]
+
+        return str(f'{npz_path}.{start_index}'), (poses, trans, betas)
