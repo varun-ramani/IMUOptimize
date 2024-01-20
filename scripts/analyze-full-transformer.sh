@@ -8,7 +8,7 @@ python -m analysis \
           --model transformer \
           --stage full \
           --smpl-model $ARTIFACTS/smpl/SMPL_male.pkl \
-          --subset 100 \
+          --subset 1000 \
           --num-sensors 24 \
           --output $ARTIFACTS/analysis/full/transformer \
           --recurse

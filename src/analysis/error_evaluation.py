@@ -44,15 +44,21 @@ def evaluate_mean_per_joint_error(
         zip(range(subset_size), loader), 
         console=utils.console, 
         description="Scoring model", 
-        total=subset_size,
+        total=min(subset_size, len(loader)),
     ):
         x, y = x.to(torch_device), y.to(torch_device)
         y_pred = net(x)
 
         crit_score = crit(y, y_pred).detach()
-        evaluator_score = evaluator(y, y_pred).detach()
-
         crit_scores.append(crit_score)
-        eval_scores.append(evaluator_score)
-    
-    return torch.tensor(crit_scores).mean().cpu(), torch.tensor(eval_scores).mean().cpu()
+
+        y = y.view(-1, 24, 3, 3)
+        y_pred = y_pred.view(-1, 24, 3, 3)
+
+        eval_score = evaluator(y, y_pred).detach()
+        eval_scores.append(eval_score)
+
+    crit_score = torch.vstack(crit_scores).mean()
+    eval_score = torch.vstack(eval_scores).mean(dim=0)
+
+    return crit_score, eval_score

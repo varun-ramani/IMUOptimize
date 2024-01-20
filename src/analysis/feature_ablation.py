@@ -75,7 +75,7 @@ def run_ablation(net, eval_ds, subset_size=50, num_sensors=24):
         zip(range(subset_size), loader), 
         console=utils.console,
         description="Running feature ablation",
-        total=subset_size
+        total=min(subset_size, len(loader))
     ):
         x, y = x.to(torch_device), y.to(torch_device)
         x.requires_grad_()

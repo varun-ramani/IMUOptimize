@@ -26,6 +26,13 @@ class AMASSDataset(Dataset):
             'train': self.all_sequences[test_cutoff:]
         }
 
+        utils.log_info(
+            f"Loaded AMASS dataset at {amass_dir} as '{ds_type}' dataset. It provides " +
+            f"{val_cutoff + 1} validation samples " + 
+            f"{test_cutoff - val_cutoff + 1} test samples and " + 
+            f"{len(self.all_sequences) - test_cutoff + 1} train samples."
+        )
+
         # set the sequence to the correct one for backwards compat
         self.sequences = self.partitioned[ds_type]
 
