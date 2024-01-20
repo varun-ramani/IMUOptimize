@@ -10,6 +10,7 @@ from rich.progress import track
 from torch.utils.data import DataLoader
 from rich.progress import Progress
 from torch import nn
+import itertools
 
 device = utils.torch_device
 
@@ -112,7 +113,9 @@ def train_model(
     if not scratch:
         load_train_context(checkpoints_dir, net, optimizer)
     
-    ds = AMASSDataset(dataset_dir, num_sensors=num_sensors)
+    train_ds = AMASSDataset(dataset_dir, num_sensors=num_sensors, ds_type='train')
+    val_ds = AMASSDataset(dataset_dir, num_sensors=num_sensors, ds_type='validation')
+
     output = Path(checkpoints_dir)
 
     # we need to ensure that the network has been put into training mode
@@ -121,12 +124,20 @@ def train_model(
 
     with Progress(console=utils.console) as progress:
         training_task = progress.add_task("Training model...", total=epochs)
+
         for epoch in range(epochs):
-            loader = DataLoader(ds, batch_size=1, shuffle=True)
+            loader = DataLoader(train_ds, batch_size=1, shuffle=True)
+            val_loader = DataLoader(val_ds, batch_size=1, shuffle=True)
+
+            training_losses = torch.zeros(100)
+            val_losses = torch.zeros(100)
+            loss_index = 0
+
             epoch_task = progress.add_task(f"Epoch {epoch} / {epochs}", total=len(loader))
-            for index, (x, y) in enumerate(loader):
+            for (index, (x, y)), (val_x, val_y) in zip(enumerate(loader), itertools.cycle(val_loader)):
                 progress.update(epoch_task, advance=1)
                 x, y = x.to(device), y.to(device)
+                val_x, val_y = val_x.to(device), val_y.to(device)
 
                 optimizer.zero_grad()
                 y_pred = net(x)
@@ -134,12 +145,20 @@ def train_model(
                 loss.backward()
                 optimizer.step()
 
-                if index % 50 == 0:
-                    message = f'Epoch {epoch}/sequence {index}: loss {loss}'
+                val_loss = criterion(net(val_x), val_y)
+
+                training_losses[loss_index] = loss.detach()
+                val_losses[loss_index] = val_loss.detach()
+
+                loss_index = (loss_index + 1) % 100
+
+                if index % 100 == 0:
+                    message = f'e{epoch}/s{index}: train loss {training_losses.mean()}, val loss {val_losses.mean()}'
                     utils.log_info(message)
 
-                if index % 500 == 0:
+                if index % 1000 == 0:
                     save_train_context(output, net, optimizer, loss)
+                    
 
             progress.update(epoch_task, visible=False)
             progress.update(training_task, advance=1)

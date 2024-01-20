@@ -29,33 +29,30 @@ def evaluate_mean_per_joint_error(
 
     net.to(torch_device)
     evaluator = MeanPerJointErrorEvaluator(smpl_model, device=torch_device)
-    dataset = AMASSDataset(eval_dataset, num_sensors)
+    dataset = AMASSDataset(eval_dataset, num_sensors, ds_type='test')
     loader = DataLoader(dataset, batch_size=1, shuffle=True)
+
+    net.eval()
 
     # run inference. we could definitely do this entire thing in one fell swoop
     # on the GPU, but we don't since that would mess with the LSTM's hidden
     # state.
-    Y_vals = []
-    Y_preds = []
+    crit_scores = []
+    eval_scores = []
+
     for _, (x, y) in track(
         zip(range(subset_size), loader), 
         console=utils.console, 
-        description="Running inference", 
+        description="Scoring model", 
         total=subset_size,
     ):
         x, y = x.to(torch_device), y.to(torch_device)
-        Y_vals.append(y)
-        Y_preds.append(net(x))
+        y_pred = net(x)
+
+        crit_score = crit(y, y_pred).detach()
+        evaluator_score = evaluator(y, y_pred).detach()
+
+        crit_scores.append(crit_score)
+        eval_scores.append(evaluator_score)
     
-    utils.log_info("Computing criterion score")
-    Y = torch.hstack(Y_vals)
-    Y_pred = torch.hstack(Y_preds)
-    crit_score = crit(Y, Y_pred).cpu()
-
-    utils.log_info("Computing evaluator score")
-    Y_rep = Y.view(-1, 24, 3, 3)
-    Y_pred_rep = Y_pred.view(-1, 24, 3, 3)
-    evaluator_score = evaluator(Y_rep, Y_pred_rep).cpu()
-
-
-    return crit_score, evaluator_score
+    return torch.tensor(crit_scores).mean().cpu(), torch.tensor(eval_scores).mean().cpu()

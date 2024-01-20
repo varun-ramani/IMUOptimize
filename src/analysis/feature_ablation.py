@@ -64,7 +64,7 @@ def run_ablation(net, eval_ds, subset_size=50, num_sensors=24):
     - num_sensors: the number of IMUs that the dataset was generated on.
     """
 
-    dataset = AMASSDataset(eval_ds, num_sensors)
+    dataset = AMASSDataset(eval_ds, num_sensors, ds_type='test')
     loader = DataLoader(dataset, batch_size=1, shuffle=True)
     net.to(torch_device)
     net = StepOneRNN_SO(net).to(torch_device)

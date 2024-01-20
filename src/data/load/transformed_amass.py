@@ -27,7 +27,7 @@ class AMASSDataset(Dataset):
         }
 
         # set the sequence to the correct one for backwards compat
-        self.sequence = self.partitioned[ds_type]
+        self.sequences = self.partitioned[ds_type]
 
         self.num_sensors = num_sensors
 
