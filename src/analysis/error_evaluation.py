@@ -14,7 +14,8 @@ def evaluate_mean_per_joint_error(
     crit: nn.Module,
     smpl_model: str,
     eval_dataset: str,
-    subset_size=50
+    subset_size=50,
+    num_sensors=24
 ):
     """
     Evaluates the mean per joint error on a dataset basis.
@@ -28,8 +29,8 @@ def evaluate_mean_per_joint_error(
 
     net.to(torch_device)
     evaluator = MeanPerJointErrorEvaluator(smpl_model, device=torch_device)
-    dataset = AMASSDataset(eval_dataset)
-    loader = DataLoader(dataset, batch_size=1, pin_memory=True, shuffle=True)
+    dataset = AMASSDataset(eval_dataset, num_sensors)
+    loader = DataLoader(dataset, batch_size=1, shuffle=True)
 
     # run inference. we could definitely do this entire thing in one fell swoop
     # on the GPU, but we don't since that would mess with the LSTM's hidden
@@ -42,9 +43,9 @@ def evaluate_mean_per_joint_error(
         description="Running inference", 
         total=subset_size,
     ):
-        x, y = x.to(torch_device), y
+        x, y = x.to(torch_device), y.to(torch_device)
         Y_vals.append(y)
-        Y_preds.append(net(x).cpu().detach())
+        Y_preds.append(net(x))
     
     utils.log_info("Computing criterion score")
     Y = torch.hstack(Y_vals)

@@ -21,7 +21,7 @@ def net_optim_crit(args):
         if args.stage == 'full':
             net = StepOneTransformer()
         elif args.stage == 'optim': 
-            pass
+            net = StepOneTransformer()
         else:
             utils.log_error(f"Invalid stage {args.stage}")
             exit(-1)

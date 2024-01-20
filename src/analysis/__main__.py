@@ -114,7 +114,7 @@ def run_analysis(input_ds, output_path):
     if not args.no_eval:
         utils.log_info("Now running basic model evaluation")
 
-        crit_score, mpje_score = evaluate_mean_per_joint_error(net, criterion, args.smpl_model, input_ds, subset_size=args.subset_size)
+        crit_score, mpje_score = evaluate_mean_per_joint_error(net, criterion, args.smpl_model, input_ds, subset_size=args.subset_size, num_sensors=args.num_sensors)
         pos_err, loc_rot_err, global_rot_err = mpje_score
 
         data = {
@@ -173,8 +173,9 @@ timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
 output_path = outputs_dir / f'analysis_{timestamp}'
 
 input_path = Path(args.input_ds)
-if run_analysis:
+if args.recurse:
     for subdirectory in input_path.glob('*/'):
         local_output_path = output_path / subdirectory.name
         run_analysis(subdirectory, local_output_path)
+
 run_analysis(input_path, output_path)

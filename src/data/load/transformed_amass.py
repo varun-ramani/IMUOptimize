@@ -6,13 +6,12 @@ import torch
 from pathlib import Path
 from torch.utils.data import Dataset, DataLoader
 import random
+import utils
 
 class AMASSDataset(Dataset):
-    def __init__(self, amass_dir: str, shuffle=True, num_sensors=24):
+    def __init__(self, amass_dir: str, num_sensors=24):
         self.amass_dir = Path(amass_dir)
         self.sequences = list(self.amass_dir.glob('**/seq*/'))
-        if shuffle:
-            random.shuffle(self.sequences)
         self.num_sensors = num_sensors
 
     def __len__(self):
