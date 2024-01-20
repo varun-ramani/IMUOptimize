@@ -84,7 +84,7 @@ def produce_synthetic_dataset(input_ds, output_ds, smpl_model_path, desired_join
     """
     input_data = RawAMASSDataset(input_ds)
     # input_data = Subset(input_data, range(10))
-    input_data_loader = DataLoader(input_data, shuffle=True, pin_memory=True)
+    input_data_loader = DataLoader(input_data, shuffle=True, num_workers=8)
 
     # establish a fresh copy of the output directory 
     output_folder = Path(output_ds)
