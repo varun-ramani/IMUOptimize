@@ -9,9 +9,26 @@ import random
 import utils
 
 class AMASSDataset(Dataset):
-    def __init__(self, amass_dir: str, num_sensors=24):
+    def __init__(self, amass_dir: str, num_sensors=24, ds_type='train'):
         self.amass_dir = Path(amass_dir)
-        self.sequences = list(self.amass_dir.glob('**/seq*/'))
+        
+        # first, acquire all the sequences. shuffle the result with the same
+        # seed.
+        self.all_sequences = list(self.amass_dir.glob('**/seq*/'))
+        random.Random(11).shuffle(self.all_sequences)
+
+        # then, partition the dataset into val, test, and train.
+        val_cutoff = int(len(self.all_sequences) * 0.02)
+        test_cutoff = int(len(self.all_sequences) * 0.1) + val_cutoff
+        self.partitioned = {
+            'validation': self.all_sequences[:val_cutoff],
+            'test': self.all_sequences[val_cutoff:test_cutoff],
+            'train': self.all_sequences[test_cutoff:]
+        }
+
+        # set the sequence to the correct one for backwards compat
+        self.sequence = self.partitioned[ds_type]
+
         self.num_sensors = num_sensors
 
     def __len__(self):
