@@ -116,8 +116,8 @@ def train_model(
     output = Path(checkpoints_dir)
 
     # we need to ensure that the network has been put into training mode
-    net.train()
     net.to(device)
+    net.train()
 
     with Progress(console=utils.console) as progress:
         training_task = progress.add_task("Training model...", total=epochs)

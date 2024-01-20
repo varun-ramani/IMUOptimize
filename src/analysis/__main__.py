@@ -4,17 +4,15 @@ from rich import print
 from dataclasses import dataclass
 from typing import List
 from torch import nn
-from torch.optim import SGD, Optimizer
-from model.full_ds.birnn import StepOneRNN
 from model.workflow import load_train_context, find_latest_checkpoint
 from .error_evaluation import evaluate_mean_per_joint_error
 from .feature_ablation import run_ablation
-from rich.table import Table
 import pandas as pd
 from pathlib import Path
 from datetime import datetime
 import json
 import matplotlib.pyplot as plt
+from generic_experiment import net_optim_crit
 
 # start by parsing the arguments
 def acquire_argument(arg_name, is_boolean=False, default=None):
@@ -61,30 +59,7 @@ args = Args(
     recurse=acquire_argument('--recurse', is_boolean=True)
 )
 
-net: nn.Module = None
-criterion: nn.Module = None
-optimizer: Optimizer = None
-if args.model == 'transformer': 
-    if args.stage == 'full':
-        pass
-    elif args.stage == 'optim': 
-        pass
-    else:
-        utils.log_error(f"Invalid stage {args.stage}")
-        exit(-1)
-elif args.model == 'birnn': 
-    if args.stage == 'full':
-        net = StepOneRNN(num_hidden=1024)
-    elif args.stage == 'optim': 
-        pass
-    else:
-        utils.log_error(f"Invalid stage {args.stage}")
-        exit(-1)
-    optimizer = SGD(net.parameters(), lr=0.005)
-    criterion = nn.MSELoss()
-else:
-    utils.log_error(f"Invalid model type {args.model}")
-    exit(-1)
+net, optimizer, criterion = net_optim_crit(args)
 
 if find_latest_checkpoint(args.checkpoints_dir) is None:
     utils.log_error(f"No checkpoint at '{args.checkpoints_dir}'.")

@@ -3,11 +3,8 @@ import utils
 from rich import print
 from dataclasses import dataclass
 from typing import List
-from torch import nn
-from torch.optim import SGD, Optimizer
-from model.full_ds.birnn import StepOneRNN
-from model.optim_ds.birnn import StepTwoRNN
 from model.workflow import train_model
+from generic_experiment import net_optim_crit
 
 # start by parsing the arguments
 def acquire_argument(arg_name, is_boolean=False):
@@ -44,30 +41,7 @@ args = Args(
     num_sensors=int(acquire_argument('--num-sensors')),
 )
 
-net: nn.Module = None
-criterion: nn.Module = None
-optimizer: Optimizer = None
-if args.model == 'transformer': 
-    if args.stage == 'full':
-        pass
-    elif args.stage == 'optim': 
-        pass
-    else:
-        utils.log_error(f"Invalid stage {args.stage}")
-        exit(-1)
-elif args.model == 'birnn': 
-    if args.stage == 'full':
-        net = StepOneRNN(num_hidden=1024)
-    elif args.stage == 'optim': 
-        net = StepTwoRNN(num_hidden=1024)
-    else:
-        utils.log_error(f"Invalid stage {args.stage}")
-        exit(-1)
-    optimizer = SGD(net.parameters(), lr=0.005)
-    criterion = nn.MSELoss()
-else:
-    utils.log_error(f"Invalid model type {args.model}")
-    exit(-1)
+net, optimizer, criterion = net_optim_crit(args)
 
 train_model(
     net, 
