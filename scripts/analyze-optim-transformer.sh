@@ -3,7 +3,7 @@
 source .env
 cd src
 python -m analysis \
-          --data $ARTIFACTS/data/AMASS_t_optim \
+          --data $ARTIFACTS/data/AMASS_t_optim_transformer \
           --checkpoints $ARTIFACTS/checkpoints/optim/transformer \
           --model transformer \
           --stage optim \

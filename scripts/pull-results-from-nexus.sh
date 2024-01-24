@@ -6,6 +6,8 @@
 
 source .env
 
+REQUESTED_DIRECTORIES="analysis"
+
 REMOTE_ARTIFACTS=$(ssh nexus "zsh" <<-SCRIPT
     cd $NEXUS_REMOTE
     source .env
@@ -15,7 +17,7 @@ SCRIPT
 
 REMOTE_FILESIZE=$(ssh nexus "zsh" <<-SCRIPT
     cd $REMOTE_ARTIFACTS
-    du -bc analysis checkpoints | grep total | python3 -c 'print(input().split()[0])'
+    du -bc $REQUESTED_DIRECTORIES | grep total | python3 -c 'print(input().split()[0])'
 SCRIPT
 )
 
@@ -23,6 +25,6 @@ cd artifacts
 
 (ssh nexus "zsh" <<-SCRIPT
     cd $REMOTE_ARTIFACTS
-    tar cf - analysis checkpoints | lz4 -
+    tar cf - $REQUESTED_DIRECTORIES | lz4 -
 SCRIPT
 ) | unlz4 - | pv -s $REMOTE_FILESIZE | gtar xf -

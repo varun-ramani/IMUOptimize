@@ -126,6 +126,7 @@ def train_model(
         training_task = progress.add_task("Training model...", total=epochs)
 
         for epoch in range(epochs):
+            torch.multiprocessing.set_sharing_strategy('file_system')
             loader = DataLoader(train_ds, batch_size=1, shuffle=True)
             val_loader = DataLoader(val_ds, batch_size=1, shuffle=True)
 
