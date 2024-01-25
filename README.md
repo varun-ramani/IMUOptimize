@@ -1,14 +1,18 @@
-# IMUFind
-A data driven approach to IMU-based pose estimation.
+# IMUOptimize: A Data-Driven Approach to Optimal IMU Placement for Human Pose Estimation with Transformer Architecture
 
-## What?
-We want to solve the task of human pose estimation by using IMUs - by placing
-devices that combine accelerometers and gyroscopes on various points on the
-body, we want to run machine learning on the collected data and try to predict
-the rotation of all the user's joints.
-
-## Core Advancement
-IMUs are expensive! We don't want to overdo them - so we need to try and
-minimize their numhber. We'd like to try and get the most "bang for our buck" -
-i.e. try and figure out where the most optimal IMU locations would be on the
-body.
+This paper presents a novel approach for predicting human
+poses using IMU data, diverging from previous studies such
+as DIP-IMU, IMUPoser, and TransPose, which use up to
+6 IMUs in conjunction with bidirectional RNNs. We in-
+troduce two main innovations: a data-driven strategy for
+optimal IMU placement and a transformer-based model ar-
+chitecture for time series analysis. Our findings indicate
+that our approach not only outperforms traditional 6 IMU-
+based biRNN models but also that the transformer architec-
+ture significantly enhances pose reconstruction from data ob-
+tained from 24 IMU locations, with equivalent performance
+to biRNNs when using only 6 IMUs. The enhanced accuracy
+provided by our optimally chosen locations, when coupled
+with the parallelizability and performance of transformers,
+provides significant improvements to the field of IMU-based
+pose estimation.
