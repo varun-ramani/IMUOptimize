@@ -1,5 +1,7 @@
 # IMUOptimize: A Data-Driven Approach to Optimal IMU Placement for Human Pose Estimation with Transformer Architecture
 
+[Paper Link](https://arxiv.org/pdf/2402.08923)
+
 This paper presents a novel approach for predicting human
 poses using IMU data, diverging from previous studies such
 as DIP-IMU, IMUPoser, and TransPose, which use up to
